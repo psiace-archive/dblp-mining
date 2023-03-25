@@ -18,7 +18,7 @@ pip install -r requirements.txt
 Exact the important information
 
 ```bash
-python src/parser.py <start> <end>
+python src/extractor.py <start> <end>
 ```
 
 Mine with the FP-tree
