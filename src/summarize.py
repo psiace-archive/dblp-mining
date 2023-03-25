@@ -55,77 +55,46 @@ for coauthor in author_relationships["coauthors"]:
 with open(AUTHOR_RELATIONSHIPS_PATH, "w") as f:
     ujson.dump(author_relationships, f, indent=4)
 
-def calculate_lift(patterns, antecedent, consequent):
-    num_antecedent = patterns.get(antecedent, 0)
-    num_consequent = patterns.get(consequent, 0)
-    num_relationship = patterns.get(antecedent + consequent, 0)
+def calculate_lift(num_antecedent, num_consequent, num_relationship, num):
+    return (num_relationship * num) / (num_antecedent * num_consequent)
 
-    if num_antecedent == 0 or num_consequent == 0:
-        return 0
-
-    return (num_relationship * len(transactions)) / (num_antecedent * num_consequent)
-
-def calculate_cosine(patterns, antecedent, consequent):
-    num_antecedent = patterns.get(antecedent, 0)
-    num_consequent = patterns.get(consequent, 0)
-    num_relationship = patterns.get(antecedent + consequent, 0)
-
-    if num_antecedent == 0 or num_consequent == 0:
-        return 0
-
+def calculate_cosine(num_antecedent, num_consequent, num_relationship):
     return num_relationship / ((num_antecedent * num_consequent) ** 0.5)
 
-def calculate_full_confidence(patterns, antecedent, consequent):
-    num_antecedent = patterns.get(antecedent, 0)
-    num_consequent = patterns.get(consequent, 0)
-    num_relationship = patterns.get(antecedent + consequent, 0)
-
-    if num_antecedent == 0 or num_consequent == 0:
-        return 0
-
+def calculate_full_confidence(num_antecedent, num_consequent, num_relationship):
     return min(num_relationship / num_antecedent, num_relationship / num_consequent)
 
-def calculate_max_confidence(patterns, antecedent, consequent):
-    num_antecedent = patterns.get(antecedent, 0)
-    num_consequent = patterns.get(consequent, 0)
-    num_relationship = patterns.get(antecedent + consequent, 0)
-
-    if num_antecedent == 0 or num_consequent == 0:
-        return 0
-
+def calculate_max_confidence(num_antecedent, num_consequent, num_relationship):
     return max(num_relationship / num_antecedent, num_relationship / num_consequent)
 
-def calculate_kulc(patterns, antecedent, consequent):
+def calculate_kulc(num_antecedent, num_consequent, num_relationship):
+    return 0.5 * (num_relationship / num_antecedent + num_relationship / num_consequent)
+
+def calculate_all_metrics(item, patterns, antecedent, consequent):
     num_antecedent = patterns.get(antecedent, 0)
     num_consequent = patterns.get(consequent, 0)
     num_relationship = patterns.get(antecedent + consequent, 0)
+    
+    check_nonzero = num_antecedent == 0 or num_consequent == 0
 
-    if num_antecedent == 0 or num_consequent == 0:
-        return 0
-
-    return 0.5 * (num_relationship / num_antecedent + num_relationship / num_consequent)
+    item["support"] = float(0) if check_nonzero else (num_relationship / len(transactions))
+    item["lift"] = float(0) if check_nonzero else calculate_lift(num_antecedent, num_consequent, num_relationship, len(transactions))
+    item["cosine"] = float(0) if check_nonzero else calculate_cosine(num_antecedent, num_consequent, num_relationship)
+    item["full_confidence"] = float(0) if check_nonzero else calculate_full_confidence(num_antecedent, num_consequent, num_relationship)
+    item["max_confidence"] = float(0) if check_nonzero else calculate_max_confidence(num_antecedent, num_consequent, num_relationship)
+    item["kulc"] = float(0) if check_nonzero else calculate_kulc(num_antecedent, num_consequent, num_relationship)
 
 for coauthor in author_relationships["coauthors"]:
     antecedent = (coauthor["author1"],)
     consequent = (coauthor["author2"],)
 
-    coauthor["support"] = patterns.get(antecedent + consequent, 0) / len(transactions)
-    coauthor["lift"] = calculate_lift(patterns, antecedent, consequent)
-    coauthor["cosine"] = calculate_cosine(patterns, antecedent, consequent)
-    coauthor["full_confidence"] = calculate_full_confidence(patterns, antecedent, consequent)
-    coauthor["max_confidence"] = calculate_max_confidence(patterns, antecedent, consequent)
-    coauthor["kulc"] = calculate_kulc(patterns, antecedent, consequent)
+    calculate_all_metrics(coauthor, patterns, antecedent, consequent)
 
 for team in author_relationships["teams"]:
     antecedent = tuple(sorted(team["team_members"][:-1]))
     consequent = (team["team_members"][-1],)
 
-    team["support"] = patterns.get(antecedent + consequent, 0) / len(transactions)
-    team["lift"] = calculate_lift(patterns, antecedent, consequent)
-    team["cosine"] = calculate_cosine(patterns, antecedent, consequent)
-    team["full_confidence"] = calculate_full_confidence(patterns, antecedent, consequent)
-    team["max_confidence"] = calculate_max_confidence(patterns, antecedent, consequent)
-    team["kulc"] = calculate_kulc(patterns, antecedent, consequent)
+    calculate_all_metrics(team, patterns, antecedent, consequent)
 
 with open(AUTHOR_RELATIONSHIPS_WITH_METRICS_PATH, "w") as f:
     ujson.dump(author_relationships, f, indent=4)
